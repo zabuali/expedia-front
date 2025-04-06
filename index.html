@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Expedia Offers</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <div class="container my-5">
+    <h2 class="mb-4">Search Expedia Offers</h2>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <input type="text" id="originCity" class="form-control" placeholder="Origin City" />
+      </div>
+      <div class="col-md-5">
+        <input type="text" id="destinationCity" class="form-control" placeholder="Destination City" />
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" onclick="searchOffers()">Search</button>
+      </div>
+    </div>
+
+    <!-- Results will be populated here -->
+    <div class="mt-4" id="result"></div>
+  </div>
+
+  <script>
+    function searchOffers() {
+      const originCity = document.getElementById('originCity').value.trim();
+      const destinationCity = document.getElementById('destinationCity').value.trim();
+
+      const url = 'https://web-production-7976.up.railway.app/expedia/offers/get';
+
+      console.log("Sending GET request to:", url);
+      console.log("Headers:", { originCity, destinationCity });
+
+      fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': '*/*',
+          'originCity': originCity,
+          'destinationCity': destinationCity
+        }
+      })
+      .then(async response => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        displayOffers(data);
+      })
+      .catch(error => {
+        console.error("Request failed:", error);
+        document.getElementById('result').innerHTML = `
+          <div class="text-danger">
+            <strong>Error:</strong> ${error.message}<br/>
+            <strong>Request:</strong> ${url}<br/>
+            <strong>originCity:</strong> ${originCity}<br/>
+            <strong>destinationCity:</strong> ${destinationCity}
+          </div>`;
+      });
+    }
+
+    function displayOffers(data) {
+      const resultDiv = document.getElementById('result');
+      const offers = data.offers.Package || [];
+
+      if (offers.length === 0) {
+        resultDiv.innerHTML = `<p>No offers available.</p>`;
+        return;
+      }
+
+      let offerHtml = '';
+
+      offers.forEach(offer => {
+        const {
+          hotelInfo,
+          offerDateRange,
+          packagePricingInfo,
+          flightInfo,
+          destination,
+        } = offer;
+
+        offerHtml += `
+          <div class="card mb-3">
+            <div class="row g-0">
+              <div class="col-md-4">
+                <img src="${hotelInfo.bigHotelImageUrl}" class="img-fluid w-100 h-100" alt="Hotel Image" style="object-fit: cover;">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">${hotelInfo.hotelName}</h5>
+                  <p class="card-text">${hotelInfo.hotelLongDestination}</p>
+                  <p class="card-text"><strong>Stay:</strong> ${offerDateRange.formattedTravelStartDate} - ${offerDateRange.formattedTravelEndDate} (${offerDateRange.lengthOfStay} nights)</p>
+                  <p class="card-text"><strong>Total Price:</strong> $${packagePricingInfo.totalPackagePrice}</p>
+                  <p class="card-text"><strong>Savings:</strong> $${packagePricingInfo.totalSavings}</p>
+                  <a href="${offer.packageUrls.decodedPackageSearchUrl}" class="btn btn-primary" target="_blank">View Package</a>
+                  <a href="${offer.packageUrls.flightDeeplinks.decodedFlightSearchUrl}" class="btn btn-outline-secondary ms-2" target="_blank">View Flight</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      resultDiv.innerHTML = offerHtml;
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
